@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -13,6 +14,12 @@ import '../config/palette.dart';
 import '../services/city_service.dart';
 import '../data/data.dart';
 import '../services/city_service.dart';
+
+import 'package:http/http.dart' as http;
+
+import 'package:datetime_picker_formfield/datetime_picker_formfield.dart';
+
+const baseUrl = 'http://vp.bmt-inc.vn/bmt_ift_api/public_html/api/';
 
 class GuestFieldScreen extends StatefulWidget {
   @override
@@ -32,17 +39,22 @@ class _GuestFieldScreenState extends State<GuestFieldScreen> {
   final fullnameController = TextEditingController();
   final phoneController = TextEditingController();
 
+  final format = DateFormat("yyyy-MM-dd HH:mm");
+
   String _position;
   String _description;
   String _nearby;
   String _fullname;
   String _phone;
 
+  bool _isDontSubmit;
+
   String _city;
   String _district;
 
   List<Map> districts;
 
+  Color colorTextField = Colors.white;
   final Shader linearGradient = LinearGradient(
     colors: <Color>[Color(0xff1CD8D2), Color(0xff93EDC7)],
   ).createShader(Rect.fromLTWH(0.0, 0.0, 200.0, 70.0));
@@ -155,85 +167,52 @@ class _GuestFieldScreenState extends State<GuestFieldScreen> {
                     key: _formKey,
                     child: Column(
                       children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget>[
-                              // Text(
-                              //   "KHAI BÁO Y TẾ DÀNH CHO\n KHÁCH HÀNG",
-                              //   textAlign: TextAlign.center,
-                              //   style: TextStyle(
-                              //       fontSize: 18,
-                              //       fontWeight: FontWeight.bold,
-                              //       foreground: Paint()
-                              //         ..shader = linearGradient),
-                              // )
-                            ],
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Flexible(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 5, horizontal: size.width * 0.05),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 3, horizontal: 10),
+                                decoration: BoxDecoration(
+                                    color: Colors.blue[100],
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: BasicDateField(),
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                            margin: EdgeInsets.symmetric(vertical: 3),
-                            padding: EdgeInsets.symmetric(
-                                vertical: 3, horizontal: 10),
-                            width: size.width * 0.95,
-                            decoration: BoxDecoration(
-                                color: Colors.blue[100],
-                                borderRadius: BorderRadius.circular(10)),
-                            child: FlatButton(
-                              onPressed: () {
-                                DatePicker.showDateTimePicker(context,
-                                    showTitleActions: true,
-                                    minTime: DateTime(2020, 1, 1),
-                                    maxTime: new DateTime.now(),
-                                    onChanged: (date) {
-                                  print('change $date');
-                                }, onConfirm: (date) {
-                                  setState(() {
-                                    this._fromDate = date;
-                                  });
-                                },
-                                    currentTime: DateTime.now(),
-                                    locale: LocaleType.vi);
-                              },
-                              child: Text(
-                                this._fromDate != null
-                                    ? this._fromDate.toString()
-                                    : 'Chọn thời gian đến',
-                                style: TextStyle(color: Colors.black54),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Flexible(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 5, horizontal: size.width * 0.05),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 3, horizontal: 10),
+                                decoration: BoxDecoration(
+                                    color: Colors.blue[100],
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: BasicTimeField("fromDate"),
                               ),
-                            )),
-                        Container(
-                            margin: EdgeInsets.symmetric(vertical: 3),
-                            padding: EdgeInsets.symmetric(
-                                vertical: 3, horizontal: 10),
-                            width: size.width * 0.95,
-                            decoration: BoxDecoration(
-                                color: Colors.blue[100],
-                                borderRadius: BorderRadius.circular(10)),
-                            child: FlatButton(
-                              onPressed: () {
-                                DatePicker.showDateTimePicker(context,
-                                    showTitleActions: true,
-                                    minTime: DateTime(2020, 1, 1),
-                                    maxTime: new DateTime.now(),
-                                    onChanged: (date) {
-                                  print('change $date');
-                                }, onConfirm: (date) {
-                                  setState(() {
-                                    this._toDate = date;
-                                  });
-                                },
-                                    currentTime: DateTime.now(),
-                                    locale: LocaleType.vi);
-                              },
-                              child: Text(
-                                this._toDate != null
-                                    ? this._toDate.toString()
-                                    : 'Chọn thời gian đi',
-                                style: TextStyle(color: Colors.black54),
+                            ),
+                            Flexible(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 5, horizontal: size.width * 0.05),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 1, horizontal: 5),
+                                decoration: BoxDecoration(
+                                    color: Colors.blue[100],
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: BasicTimeField("toDate"),
                               ),
-                            )),
+                            ),
+                          ],
+                        ),
                         Container(
                           margin: EdgeInsets.symmetric(vertical: 3),
                           padding:
@@ -437,6 +416,87 @@ class _GuestFieldScreenState extends State<GuestFieldScreen> {
         .showSnackBar(new SnackBar(content: new Text(value)));
   }
 
+  Widget BasicDateField() {
+    final format = DateFormat("dd-MM-yyyy");
+    return Column(children: <Widget>[
+      Text('Chọn ngày'),
+      DateTimeField(
+        decoration: InputDecoration(border: InputBorder.none),
+        format: format,
+        onShowPicker: (context, currentValue) {
+          return showDatePicker(
+              context: context,
+              firstDate: DateTime(2020),
+              initialDate: currentValue ?? DateTime.now(),
+              lastDate: new DateTime.now());
+
+          // if (picked != null && picked != selectedDate) selectDate(picked);
+        },
+        onChanged: (date) {
+          setState(() {
+            if (date != null) {
+              this._fromDate = date;
+              this._toDate = date;
+            } else {
+              this._fromDate = null;
+              this._toDate = null;
+            }
+          });
+          print(this._fromDate);
+        },
+      ),
+    ]);
+  }
+
+  Widget BasicTimeField(String type) {
+    final format = DateFormat("HH:mm");
+    return Column(children: <Widget>[
+      Text(type == 'fromDate' ? 'Chọn thời gian đến' : 'Chọn thời gian đi'),
+      DateTimeField(
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.blue[100],
+          border: InputBorder.none,
+        ),
+        format: format,
+        onShowPicker: (context, currentValue) async {
+          final time = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.fromDateTime(currentValue ?? DateTime.now()),
+          );
+          return DateTimeField.convert(time);
+          // return DateTimeField.combine(this._fromDate, time);
+        },
+        onChanged: (time) {
+          print(time);
+          setState(() {
+            if (time != null) {
+              TimeOfDay t = TimeOfDay.fromDateTime(time);
+
+              if (type == "fromDate") {
+                this._fromDate = new DateTime(this._fromDate.year,
+                    this._fromDate.month, this._fromDate.day, t.hour, t.minute);
+                print(this._fromDate);
+              } else {
+                this._toDate = new DateTime(this._toDate.year,
+                    this._toDate.month, this._toDate.day, t.hour, t.minute);
+                print(this._toDate);
+              }
+              if (this._fromDate.hour > this._toDate.hour) {
+                showSnackBar("Vui lòng chọn giờ đến phải nhỏ hơn giờ đi.");
+                this._isDontSubmit = false;
+                return;
+              } else {
+                this._isDontSubmit = true;
+                return;
+              }
+            }
+          });
+        },
+      ),
+    ]);
+  }
+
   static Future addFieldFormGuest(body, city, district) async {
     var url = '${baseUrl}tracking/guest';
     body["city_id"] = city.toString();
@@ -466,5 +526,9 @@ class _GuestFieldScreenState extends State<GuestFieldScreen> {
     } catch (e) {
       print(e);
     }
+  }
+
+  Widget showSnackBar(text) {
+    Scaffold.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 }
